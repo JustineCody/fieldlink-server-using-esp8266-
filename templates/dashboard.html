@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- 🌿 Animated Header Icons -->
+  <div class="header-anim">
+    <span style="font-size: 2.5rem;">🌿</span>
+    <span style="font-size: 2.5rem;">🌊</span>
+    <span style="font-size: 2.5rem;">🧪</span>
+  </div>
+
+  <!-- 👋 Glowing Personalized Greeting -->
+  <div class="greeting">
+    <h2 class="glow-greet">Nice to meet you, {{ username }}! 👋</h2>
+    <p class="glow-sub">Let’s explore your seaweed dashboard and check today’s ocean health readings 🌊</p>
+  </div>
+
+  <!-- 🌊 Seaweed-Themed Welcome Box -->
+  <div class="welcome-box seaweed-theme">
+    <h1 class="glow-text">Welcome to <span class="brand-name">SAVING SEAWEEDS</span> 🌱</h1>
+    <p>Monitoring ocean health, empowering sustainable farms, and protecting marine ecosystems — one sensor at a time.</p>
+    <label class="theme-toggle">
+      <input type="checkbox" id="themeSwitch">
+      <span class="slider"></span> Toggle Ocean Mode
+    </label>
+  </div>
+
+  <!-- 📊 Sensor Readings -->
+  <div class="sensor-card">
+    <h3>Sensor Readings</h3>
+    <p title="Ideal: 24–32°C">
+      🌡️ Temperature: <span id="temp" class="">--</span> °C <span id="temp-icon" class="icon"></span>
+    </p>
+    <p title="Ideal: 40–70%">
+      💧 Humidity: <span id="hum" class="">--</span> % <span id="hum-icon" class="icon"></span>
+    </p>
+    <p title="Ideal: 6.5–8.5">
+      🧪 pH Level: <span id="ph" class="">--</span> <span id="ph-icon" class="icon"></span>
+    </p>
+    <p title="Ideal: 5–35 ppt">
+      🌊 Salinity: <span id="sal" class="">--</span> ppt <span id="sal-icon" class="icon"></span>
+    </p>
+  </div>
+
+  <!-- 🧭 Legend -->
+  <div class="legend">
+    <h4>Legend</h4>
+    <p><span class="safe">✅ Safe</span> — within optimal range</p>
+    <p><span class="warn">⚠️ Warning</span> — slightly outside range</p>
+    <p><span class="danger">❌ Danger</span> — critical level</p>
+  </div>
+
+  <!-- 📁 Export Button -->
+  <button onclick="exportCSV()">📁 Export Readings</button>
+</div>
+
+<!-- 🧠 Sensor Logic -->
+<script>
+  let log = [];
+
+  function classify(value, type) {
+    if (type === 'temp') {
+      if (value < 22 || value > 35) return ['danger', '❌'];
+      if (value < 24 || value > 32) return ['warn', '⚠️'];
+      return ['safe', '✅'];
+    }
+    if (type === 'hum') {
+      if (value < 30 || value > 80) return ['danger', '❌'];
+      if (value < 40 || value > 70) return ['warn', '⚠️'];
+      return ['safe', '✅'];
+    }
+    if (type === 'ph') {
+      if (value < 6.0 || value > 9.0) return ['danger', '❌'];
+      if (value < 6.5 || value > 8.5) return ['warn', '⚠️'];
+      return ['safe', '✅'];
+    }
+    if (type === 'sal') {
+      if (value < 0 || value > 40) return ['danger', '❌'];
+      if (value < 5 || value > 35) return ['warn', '⚠️'];
+      return ['safe', '✅'];
+    }
+    return ['', ''];
+  }
+
+  function fetchSensorData() {
+    fetch('/sensor-data')
+      .then(response => response.json())
+      .then(data => {
+        const sensors = [
+          { id: 'temp', value: data.temperature, type: 'temp' },
+          { id: 'hum', value: data.humidity, type: 'hum' },
+          { id: 'ph', value: data.ph, type: 'ph' },
+          { id: 'sal', value: data.salinity, type: 'sal' }
+        ];
+
+        const timestamp = new Date().toLocaleString();
+        const entry = { timestamp };
+
+        sensors.forEach(sensor => {
+          const span = document.getElementById(sensor.id);
+          const icon = document.getElementById(sensor.id + '-icon');
+          const [status, symbol] = classify(sensor.value, sensor.type);
+
+          span.textContent = sensor.value;
+          span.className = status + ' animated';
+          icon.textContent = symbol;
+          icon.className = 'icon animated';
+
+          entry[sensor.id] = sensor.value;
+          entry[sensor.id + '_status'] = status;
+        });
+
+        log.push(entry);
+      });
+  }
+
+  function exportCSV() {
+    let csv = 'Timestamp,Temperature,Temp Status,Humidity,Hum Status,pH,pH Status,Salinity,Sal Status\n';
+    log.forEach(row => {
+      csv += `${row.timestamp},${row.temp},${row.temp_status},${row.hum},${row.hum_status},${row.ph},${row.ph_status},${row.sal},${row.sal_status}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sensor_log.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  setInterval(fetchSensorData, 3000);
+
+  // 🌗 Theme Toggle
+  document.getElementById('themeSwitch').addEventListener('change', function () {
+    document.body.classList.toggle('dark-mode');
+  });
+</script>
+{% endblock %}
